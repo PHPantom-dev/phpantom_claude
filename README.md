@@ -17,6 +17,10 @@ provide.
 - **Code navigation**: go to definition, find references, hover types.
 - **Framework awareness**: Laravel Eloquent relationships, scopes, casts, and
   PHPStan generics and conditional return types.
+- **Project-wide CLI operations.** While the plugin is enabled, `phpantom_lsp`
+  is on Claude's PATH, and a bundled skill tells Claude when to use it: whole
+  project type-coverage reports (`phpantom_lsp analyze`) and automated fixes
+  across many files (`phpantom_lsp fix`), all from static analysis.
 - **A `php -l` syntax check** run automatically after Claude edits a `.php` file,
   so a syntax error is caught and surfaced immediately (skipped when `php` or
   `jq` is not installed).
@@ -70,10 +74,12 @@ The launcher reads these environment variables:
 
 ## How it works
 
-Claude Code launches `phpantom/bin/phpantom-lsp-launcher.sh` as the language
-server and speaks LSP over its stdin/stdout. The launcher locates or downloads
+Claude Code launches `phpantom/bin/phpantom_lsp` as the language server and
+speaks LSP over its stdin/stdout. The wrapper locates or downloads a real
 `phpantom_lsp`, then `exec`s it so the protocol stream passes straight through.
-The server performs static analysis only; it never runs your PHP application.
+The same wrapper is on the Bash tool's PATH, so Claude can also invoke
+`phpantom_lsp analyze` and `phpantom_lsp fix` for whole-project work. The server
+performs static analysis only; it never runs your PHP application.
 
 ## Editor extensions
 

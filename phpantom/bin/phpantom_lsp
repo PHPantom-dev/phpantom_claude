@@ -1,19 +1,27 @@
 #!/usr/bin/env bash
 #
-# PHPantom language server launcher for Claude Code.
+# phpantom_lsp resolver for Claude Code.
 #
-# Claude Code treats this script as the LSP "binary": it spawns it once and
-# proxies JSON-RPC over the child's stdin/stdout. The script resolves an actual
-# `phpantom_lsp` binary and `exec`s it, so stdin/stdout pass straight through.
+# This wrapper is used two ways, and forwards its arguments to a real
+# phpantom_lsp binary in both:
+#
+#   * As the language server. Claude Code spawns it with no arguments and
+#     proxies JSON-RPC over the child's stdin/stdout (the binary defaults to
+#     stdio when given no subcommand).
+#   * As a CLI. While the plugin is enabled this bin/ directory is on the Bash
+#     tool's PATH, so `phpantom_lsp analyze`, `phpantom_lsp fix`, etc. resolve
+#     here and run project-wide operations.
+#
+# It resolves a real phpantom_lsp binary and `exec`s it, so both the LSP stream
+# and CLI stdout pass straight through. Human-readable progress goes to stderr;
+# stdout is left untouched for the caller.
 #
 # Resolution order (mirrors the PHPantom VS Code extension):
 #   1. $PHPANTOM_SERVER_PATH        — explicit override to a local binary
-#   2. `phpantom_lsp` on $PATH      — a system-wide install
+#   2. `phpantom_lsp` on $PATH      — a system-wide install (this wrapper's own
+#                                     directory is skipped to avoid recursion)
 #   3. a cached download            — a previously downloaded release
 #   4. a fresh download from GitHub Releases (unless PHPANTOM_NO_DOWNLOAD=1)
-#
-# Everything the script prints for humans goes to stderr. stdout is reserved for
-# the language-server protocol stream and must never be written to here.
 #
 # Environment variables:
 #   PHPANTOM_SERVER_PATH   Absolute path to a phpantom_lsp binary to use as-is.
@@ -26,6 +34,7 @@ set -euo pipefail
 
 REPO="PHPantom-dev/phpantom_lsp"
 BIN_NAME="phpantom_lsp"
+SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 log() { printf '[phpantom] %s\n' "$*" >&2; }
 
@@ -42,9 +51,33 @@ if [ -n "${PHPANTOM_SERVER_PATH:-}" ]; then
   exec "${PHPANTOM_SERVER_PATH}" "$@"
 fi
 
-# ── 2. Already on PATH ────────────────────────────────────────────────────────
-if command -v "${BIN_NAME}" >/dev/null 2>&1; then
-  exec "${BIN_NAME}" "$@"
+# ── 2. A real phpantom_lsp on PATH (skipping this wrapper's own directory) ─────
+find_on_path() {
+  local dir found
+  found=""
+  local saved_ifs="${IFS}"
+  IFS=:
+  for dir in ${PATH}; do
+    [ -z "${dir}" ] && continue
+    # Resolve to an absolute path so the self-directory comparison is reliable.
+    case "${dir}" in
+      /*) : ;;
+      *) dir="$(cd "${dir}" 2>/dev/null && pwd || true)" ;;
+    esac
+    [ -z "${dir}" ] && continue
+    [ "${dir}" = "${SELF_DIR}" ] && continue
+    if [ -x "${dir}/${BIN_NAME}" ]; then
+      found="${dir}/${BIN_NAME}"
+      break
+    fi
+  done
+  IFS="${saved_ifs}"
+  [ -n "${found}" ] && printf '%s\n' "${found}"
+}
+
+path_bin="$(find_on_path || true)"
+if [ -n "${path_bin}" ]; then
+  exec "${path_bin}" "$@"
 fi
 
 # ── Detect the platform's release triple and archive format ───────────────────

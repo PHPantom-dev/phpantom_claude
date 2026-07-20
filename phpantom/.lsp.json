@@ -1,6 +1,6 @@
 {
   "phpantom": {
-    "command": "${CLAUDE_PLUGIN_ROOT}/bin/phpantom-lsp-launcher.sh",
+    "command": "${CLAUDE_PLUGIN_ROOT}/bin/phpantom_lsp",
     "args": [],
     "transport": "stdio",
     "extensionToLanguage": {
