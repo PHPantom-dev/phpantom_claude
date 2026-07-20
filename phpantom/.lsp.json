@@ -1,0 +1,20 @@
+{
+  "phpantom": {
+    "command": "${CLAUDE_PLUGIN_ROOT}/bin/phpantom-lsp-launcher.sh",
+    "args": [],
+    "transport": "stdio",
+    "extensionToLanguage": {
+      ".php": "php",
+      ".phtml": "php",
+      ".php3": "php",
+      ".php4": "php",
+      ".php5": "php",
+      ".php7": "php",
+      ".php8": "php",
+      ".phps": "php",
+      ".blade.php": "blade"
+    },
+    "startupTimeout": 120000,
+    "maxRestarts": 3
+  }
+}

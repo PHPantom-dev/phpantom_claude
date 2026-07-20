@@ -1,0 +1,16 @@
+{
+  "name": "phpantom",
+  "description": "PHPantom: a fast Rust PHP language server for Claude Code, with Laravel and PHPStan-aware type intelligence.",
+  "owner": {
+    "name": "PHPantom",
+    "url": "https://github.com/PHPantom-dev"
+  },
+  "plugins": [
+    {
+      "name": "phpantom",
+      "source": "./phpantom",
+      "description": "PHP code intelligence for Claude Code (completion, diagnostics, go-to-definition, hover, references) via the PHPantom language server.",
+      "tags": ["php", "laravel", "lsp", "phpstan", "rust", "code-intelligence"]
+    }
+  ]
+}

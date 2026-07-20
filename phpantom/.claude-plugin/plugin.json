@@ -1,0 +1,14 @@
+{
+  "name": "phpantom",
+  "version": "0.1.0",
+  "description": "Fast PHP code intelligence for Claude Code: completion, diagnostics, go-to-definition, hover, and find-references powered by the PHPantom Rust language server, with Laravel and PHPStan-aware type inference.",
+  "author": {
+    "name": "PHPantom Contributors",
+    "url": "https://github.com/PHPantom-dev"
+  },
+  "homepage": "https://github.com/PHPantom-dev/phpantom_lsp",
+  "repository": "https://github.com/PHPantom-dev/phpantom_lsp",
+  "license": "MIT",
+  "keywords": ["php", "laravel", "lsp", "phpstan", "blade", "code-intelligence"],
+  "lspServers": "./.lsp.json"
+}

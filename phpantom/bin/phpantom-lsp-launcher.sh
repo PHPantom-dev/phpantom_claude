@@ -1,0 +1,171 @@
+#!/usr/bin/env bash
+#
+# PHPantom language server launcher for Claude Code.
+#
+# Claude Code treats this script as the LSP "binary": it spawns it once and
+# proxies JSON-RPC over the child's stdin/stdout. The script resolves an actual
+# `phpantom_lsp` binary and `exec`s it, so stdin/stdout pass straight through.
+#
+# Resolution order (mirrors the PHPantom VS Code extension):
+#   1. $PHPANTOM_SERVER_PATH        — explicit override to a local binary
+#   2. `phpantom_lsp` on $PATH      — a system-wide install
+#   3. a cached download            — a previously downloaded release
+#   4. a fresh download from GitHub Releases (unless PHPANTOM_NO_DOWNLOAD=1)
+#
+# Everything the script prints for humans goes to stderr. stdout is reserved for
+# the language-server protocol stream and must never be written to here.
+#
+# Environment variables:
+#   PHPANTOM_SERVER_PATH   Absolute path to a phpantom_lsp binary to use as-is.
+#   PHPANTOM_RELEASE_TAG   Release tag to download (e.g. "0.9.0"). Default: latest.
+#   PHPANTOM_CACHE_DIR     Where downloads are cached.
+#                          Default: ${XDG_CACHE_HOME:-$HOME/.cache}/phpantom-lsp
+#   PHPANTOM_NO_DOWNLOAD   Set to "1" to disable auto-download (fail instead).
+
+set -euo pipefail
+
+REPO="PHPantom-dev/phpantom_lsp"
+BIN_NAME="phpantom_lsp"
+
+log() { printf '[phpantom] %s\n' "$*" >&2; }
+
+die() {
+  log "ERROR: $*"
+  log "Install phpantom_lsp on your PATH, set PHPANTOM_SERVER_PATH to a local"
+  log "binary, or allow the launcher to download it from GitHub Releases."
+  exit 1
+}
+
+# ── 1. Explicit override ──────────────────────────────────────────────────────
+if [ -n "${PHPANTOM_SERVER_PATH:-}" ]; then
+  [ -x "${PHPANTOM_SERVER_PATH}" ] || die "PHPANTOM_SERVER_PATH is not an executable file: ${PHPANTOM_SERVER_PATH}"
+  exec "${PHPANTOM_SERVER_PATH}" "$@"
+fi
+
+# ── 2. Already on PATH ────────────────────────────────────────────────────────
+if command -v "${BIN_NAME}" >/dev/null 2>&1; then
+  exec "${BIN_NAME}" "$@"
+fi
+
+# ── Detect the platform's release triple and archive format ───────────────────
+os="$(uname -s)"
+arch="$(uname -m)"
+bin_file="${BIN_NAME}"
+ext="tar.gz"
+
+case "${os}" in
+  Darwin)
+    case "${arch}" in
+      arm64|aarch64) triple="aarch64-apple-darwin" ;;
+      x86_64) triple="x86_64-apple-darwin" ;;
+      *) die "Unsupported macOS architecture: ${arch}" ;;
+    esac
+    ;;
+  Linux)
+    case "${arch}" in
+      aarch64|arm64) triple="aarch64-unknown-linux-gnu" ;;
+      x86_64|amd64) triple="x86_64-unknown-linux-gnu" ;;
+      *) die "Unsupported Linux architecture: ${arch}" ;;
+    esac
+    ;;
+  MINGW*|MSYS*|CYGWIN*|Windows_NT)
+    ext="zip"
+    bin_file="${BIN_NAME}.exe"
+    case "${arch}" in
+      aarch64|arm64) triple="aarch64-pc-windows-msvc" ;;
+      x86_64|amd64) triple="x86_64-pc-windows-msvc" ;;
+      *) die "Unsupported Windows architecture: ${arch}" ;;
+    esac
+    ;;
+  *)
+    die "Unsupported operating system: ${os}"
+    ;;
+esac
+
+asset="${BIN_NAME}-${triple}.${ext}"
+cache_root="${PHPANTOM_CACHE_DIR:-${XDG_CACHE_HOME:-${HOME}/.cache}/phpantom-lsp}"
+
+# ── Pick a downloader ─────────────────────────────────────────────────────────
+if command -v curl >/dev/null 2>&1; then
+  downloader="curl"
+elif command -v wget >/dev/null 2>&1; then
+  downloader="wget"
+else
+  downloader=""
+fi
+
+fetch_to() { # url dest
+  case "${downloader}" in
+    curl) curl -fsSL --retry 3 -o "$2" "$1" ;;
+    wget) wget -q -O "$2" "$1" ;;
+    *) return 1 ;;
+  esac
+}
+
+# ── Resolve which release tag to use ──────────────────────────────────────────
+# With curl we can follow the /releases/latest redirect to learn the concrete
+# tag, so downloads are cached per version and a new release is picked up
+# automatically. Without curl we fall back to the "latest" download alias.
+tag="${PHPANTOM_RELEASE_TAG:-}"
+if [ -z "${tag}" ]; then
+  if [ "${downloader}" = "curl" ]; then
+    final_url="$(curl -fsSLI -o /dev/null -w '%{url_effective}' "https://github.com/${REPO}/releases/latest" 2>/dev/null || true)"
+    case "${final_url}" in
+      */tag/*) tag="${final_url##*/tag/}" ;;
+      *) tag="latest" ;;
+    esac
+  else
+    tag="latest"
+  fi
+fi
+
+install_dir="${cache_root}/${tag}/${triple}"
+bin_path="${install_dir}/${bin_file}"
+
+# ── 3. Reuse a cached download ────────────────────────────────────────────────
+if [ -x "${bin_path}" ]; then
+  exec "${bin_path}" "$@"
+fi
+
+# ── 4. Download from GitHub Releases ──────────────────────────────────────────
+[ "${PHPANTOM_NO_DOWNLOAD:-0}" = "1" ] && die "phpantom_lsp not found and auto-download is disabled (PHPANTOM_NO_DOWNLOAD=1)."
+[ -n "${downloader}" ] || die "phpantom_lsp not found and neither curl nor wget is available to download it."
+
+if [ "${tag}" = "latest" ]; then
+  url="https://github.com/${REPO}/releases/latest/download/${asset}"
+else
+  url="https://github.com/${REPO}/releases/download/${tag}/${asset}"
+fi
+
+tmp="$(mktemp -d "${TMPDIR:-/tmp}/phpantom-lsp.XXXXXX")"
+trap 'rm -rf "${tmp}"' EXIT
+
+log "Downloading ${asset} (${tag})..."
+fetch_to "${url}" "${tmp}/${asset}" || die "Download failed: ${url}"
+
+log "Extracting..."
+case "${ext}" in
+  tar.gz)
+    tar -xzf "${tmp}/${asset}" -C "${tmp}" || die "Failed to extract ${asset}"
+    ;;
+  zip)
+    if command -v unzip >/dev/null 2>&1; then
+      unzip -q "${tmp}/${asset}" -d "${tmp}" || die "Failed to extract ${asset}"
+    else
+      die "unzip is required to extract ${asset} on this platform."
+    fi
+    ;;
+esac
+
+# The archive may place the binary at the top level or in a subdirectory.
+extracted="$(find "${tmp}" -type f -name "${bin_file}" -print 2>/dev/null | head -n 1)"
+[ -n "${extracted}" ] || die "Downloaded archive did not contain ${bin_file}."
+
+mkdir -p "${install_dir}"
+# Move into place atomically so a concurrent launcher never sees a partial file.
+cp "${extracted}" "${bin_path}.tmp.$$"
+chmod +x "${bin_path}.tmp.$$"
+mv -f "${bin_path}.tmp.$$" "${bin_path}"
+
+log "Installed phpantom_lsp ${tag} to ${bin_path}"
+exec "${bin_path}" "$@"

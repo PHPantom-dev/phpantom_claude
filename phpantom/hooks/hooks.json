@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "input=$(cat); command -v jq >/dev/null 2>&1 || exit 0; file=$(printf '%s' \"$input\" | jq -r '.tool_input.file_path // empty'); [ -z \"$file\" ] && exit 0; case \"$file\" in *.blade.php) exit 0 ;; *.php) ;; *) exit 0 ;; esac; command -v php >/dev/null 2>&1 || exit 0; out=$(php -l \"$file\" 2>&1) || { printf '%s\\n' \"$out\" >&2; exit 2; }; exit 0",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
