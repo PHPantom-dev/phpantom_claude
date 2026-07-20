@@ -87,6 +87,12 @@ If you also use an editor, PHPantom ships first-party extensions for
 [VS Code / Cursor](https://github.com/PHPantom-dev/phpantom_vsix) and Zed that
 provide the same analysis.
 
+## Privacy
+
+This plugin runs entirely on your machine, with no analytics or telemetry.
+See [PRIVACY.md](PRIVACY.md) for the one network request it does make
+(downloading the language server binary).
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
