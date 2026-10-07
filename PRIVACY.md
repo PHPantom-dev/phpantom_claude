@@ -15,26 +15,14 @@ has no way to know who has installed it or how it is used.
 - **`phpantom_lsp analyze` / `phpantom_lsp fix`.** Same as the language
   server: local, static analysis of files on disk.
 
-## The one network request
+## Network access
 
-The only network access this plugin performs is downloading the
-`phpantom_lsp` binary for your platform from
-[GitHub Releases](https://github.com/PHPantom-dev/phpantom_lsp/releases),
-the first time it runs and whenever a newer release is needed. This is an
-ordinary file download (equivalent to `curl`/`wget` fetching a file, or
-`git clone`), subject to [GitHub's own privacy
-statement](https://docs.github.com/en/site-policy/privacy-policies/github-privacy-statement)
-for the request itself (e.g. your IP address, as with any HTTP request).
-The plugin does not add tracking identifiers, analytics parameters, or any
-other identifying information to this request, and downloads no other data.
-
-Once downloaded, the binary is cached locally
-(`~/.cache/phpantom-lsp` by default) and this download does not repeat
-unless a new release is available.
-
-If you set `PHPANTOM_SERVER_PATH` to a binary you already have, or put
-`phpantom_lsp` on your `PATH`, this plugin makes no network requests at
-all.
+The plugin makes no network requests. It doesn't download or install
+`phpantom_lsp`; it runs the copy you installed yourself, from Homebrew,
+crates.io, or
+[GitHub Releases](https://github.com/PHPantom-dev/phpantom_lsp/releases).
+That download happens outside the plugin, under the privacy terms of
+whichever source you installed from.
 
 ## Third parties
 

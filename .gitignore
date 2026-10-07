@@ -1,3 +1,0 @@
-# Downloaded language-server binaries (if cached inside the repo)
-.cache/
-*.tmp.*
