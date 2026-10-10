@@ -1,5 +1,6 @@
 {
   "name": "phpantom",
+  "displayName": "PHPantom",
   "version": "0.3.3",
   "description": "Fast PHP code intelligence for Claude Code: completion, diagnostics, go-to-definition, hover, and find-references powered by the PHPantom Rust language server, with Laravel and PHPStan-aware type inference, plus a CLI for project-wide analysis, fixes, and class and namespace moves.",
   "author": {
