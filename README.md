@@ -82,7 +82,7 @@ server as described above, and you can delete that directory.
 
 ## How it works
 
-Claude Code launches `phpantom/bin/phpantom_lsp` as the language server and
+Claude Code launches `bin/phpantom_lsp` as the language server and
 speaks LSP over its stdin/stdout. The wrapper finds the `phpantom_lsp` you
 installed (`$PHPANTOM_SERVER_PATH`, then your `PATH`) and `exec`s it, so the
 protocol stream passes straight through. It never downloads anything; if no
